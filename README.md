@@ -6,7 +6,6 @@
 它是 [OpenAI Codex](https://github.com/openai/codex) 的最小可运行复刻——刻意砍到 ~400 行,
 用来彻底讲清楚"一个 agent 在底层到底是怎么运转的"。
 
-> 作者背景:智能投研 PM,借这个项目把 Codex 的内部机制从概念落到能跑的代码。
 > 设计取舍、踩过的坑、与真 Codex 的差距,都写在 [DESIGN.md](DESIGN.md)。
 
 ---
