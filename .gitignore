@@ -1,0 +1,21 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# 测试时 agent 生成的临时文件
+fib.py
+hello*.py
+
+# 内部辅导/交接笔记 —— 含个人信息,绝不上传
+交接文档*.md
+.claude/
+
+# 个人隐私文件 —— 绝不上传
+_resume.txt
+*简历*
+
+# 打包构建产物
+*.egg-info/
+build/
+dist/

@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mini-codex"
+version = "0.1.0"
+description = "A minimal, readable command-line coding agent — a simplified Codex clone."
+requires-python = ">=3.8"
+dependencies = ["openai"]
+
+# 关键:注册一个命令行命令 mini_codex,指向 main.py 里的 main() 函数。
+# pip install 后,pip 会在 Python 的 Scripts 目录(已在 PATH 上)生成 mini_codex 启动器,
+# 于是任意目录敲 mini_codex 就能启动 —— 和 codex / claude 一样的体验。
+[project.scripts]
+mini_codex = "main:main"
+
+[tool.setuptools]
+py-modules = ["main", "agent", "tools", "approval", "history", "llm_client", "config"]
