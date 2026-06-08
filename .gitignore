@@ -7,14 +7,6 @@ venv/
 fib.py
 hello*.py
 
-# 内部辅导/交接笔记 —— 含个人信息,绝不上传
-交接文档*.md
-.claude/
-
-# 个人隐私文件 —— 绝不上传
-_resume.txt
-*简历*
-
 # 会话续聊存档(每次运行生成,不必入库)
 .mini_codex_session.json
 
