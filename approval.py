@@ -9,7 +9,9 @@
   第 3 层 执行  :tools.execute_tool
 """
 
+import difflib
 import json
+import os
 
 import tools
 
@@ -17,11 +19,43 @@ import tools
 NEEDS_APPROVAL = {"write_file", "run_shell"}
 
 
+_DIFF_MAX_LINES = 40  # diff 超过这么多行就截断,避免审批时刷屏
+
+
+def _write_preview(path: str, content: str) -> str:
+    """写文件前的"改动预览":把 现有内容 vs 将写入内容 的差异打出来,
+    让审批从"盲批"(只知道路径和字数)变"明批"(看得到具体要改什么)。"""
+    exists = os.path.exists(path)
+    old = ""
+    if exists:
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                old = f.read()
+        except Exception:
+            old = ""
+    head = f"修改文件 {path}" if exists else f"新建文件 {path}"
+    diff_lines = list(
+        difflib.unified_diff(
+            old.splitlines(),
+            content.splitlines(),
+            fromfile="现在",
+            tofile="将变成",
+            lineterm="",
+        )
+    )
+    if not diff_lines:
+        return f"{head}(内容无变化)"
+    shown = diff_lines[:_DIFF_MAX_LINES]
+    body = "\n".join("       " + ln for ln in shown)
+    if len(diff_lines) > _DIFF_MAX_LINES:
+        body += f"\n       ... (省略 {len(diff_lines) - _DIFF_MAX_LINES} 行)"
+    return f"{head},改动预览:\n{body}"
+
+
 def _describe(name: str, args: dict) -> str:
-    """把"模型要干什么"翻译成人能一眼看懂的一句话。"""
+    """把"模型要干什么"翻译成人能一眼看懂的描述。"""
     if name == "write_file":
-        content = args.get("content", "")
-        return f"写入文件 {args.get('path')}({len(content)} 字符)"
+        return _write_preview(args.get("path", ""), args.get("content", ""))
     if name == "run_shell":
         return f"执行命令: {args.get('command')}"
     return f"{name}({args})"

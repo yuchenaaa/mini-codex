@@ -19,9 +19,13 @@ class Agent:
         self.history = history
         self.approval = ApprovalManager()
 
-    def run(self, user_input: str) -> str:
-        """处理一次用户输入,返回最终的文字答案。"""
+    def run(self, user_input: str, plan_mode: bool = False) -> str:
+        """处理一次用户输入,返回最终的文字答案。
+        plan_mode=True 时只规划不执行:让模型输出分步计划,不给它任何工具。"""
         self.history.add_user(user_input)
+
+        if plan_mode:
+            return self._make_plan()
 
         for _ in range(MAX_STEPS):
             # 每轮调模型前,历史太长就先压缩(总结式压缩 + 保留首尾)
@@ -52,3 +56,27 @@ class Agent:
             # for 跑完,回到 while 顶部,带着工具结果再问一次模型
 
         return "[已达到最大步数上限,提前停止。]"
+
+    def _make_plan(self) -> str:
+        """规划模式:让模型只输出一份分步执行计划,不调用任何工具、不动手。
+        关键:调 chat 时不传 tools —— 模型物理上就无法执行操作,只能输出文字计划。"""
+        plan_messages = self.history.get() + [
+            {
+                "role": "user",
+                "content": (
+                    "现在是【规划模式】。你是产品方案设计者,不是写代码的。"
+                    "请针对上面的需求,想清楚关键的【玩法/产品设计决策】,"
+                    "而不是用什么文件或工具。请输出:\n"
+                    "1) 核心设计要点:把这个东西需要拍板的关键选择列出来。"
+                    "例如做贪吃蛇就该想:速度分几档、撞墙是直接失败还是从另一边穿过、"
+                    "是否计分以及怎么计分、要不要多个关卡/难度、用什么控制方式等;\n"
+                    "2) 对每个要拍板的点,给出你建议的默认值,并列出还有哪些可选项,"
+                    "方便用户据此调整。\n"
+                    "禁止:不要写实现步骤,不要提到读写哪个文件或调用什么工具,不要写代码。"
+                    "此刻只产出设计方案,等用户确认或调整。"
+                ),
+            }
+        ]
+        message = self.client.chat(plan_messages)  # 不传 tools
+        self.history.add_assistant(message)
+        return message.content or ""

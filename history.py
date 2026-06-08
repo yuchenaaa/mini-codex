@@ -53,9 +53,38 @@ class History:
         """返回喂给模型的完整 messages 列表。"""
         return self._messages
 
-    def _size(self) -> int:
-        """估算历史大小:整个序列化后的字符数(够用的近似)。"""
-        return len(json.dumps(self._messages, ensure_ascii=False, default=str))
+    def save(self, path: str):
+        """把当前完整对话写到磁盘,供下次续聊。存档失败不影响主流程。"""
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(self._messages, f, ensure_ascii=False, default=str)
+        except Exception:
+            pass
+
+    def load(self, path: str) -> bool:
+        """从磁盘读回上次对话,整体替换当前历史。成功返回 True。"""
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                msgs = json.load(f)
+        except Exception:
+            return False
+        if isinstance(msgs, list) and msgs:
+            self._messages = msgs
+            return True
+        return False
+
+    def _estimated_tokens(self) -> int:
+        """估算整个历史的 token 数(零依赖近似,不追求和 GLM 分词器逐字一致)。
+        规则:中日韩字符约 1 token/字;其余字符约 1 token / 4 字符。"""
+        text = json.dumps(self._messages, ensure_ascii=False, default=str)
+        cjk = other = 0
+        for ch in text:
+            # CJK 表意文字 + 中日韩标点/假名/谚文,按 1 字 ≈ 1 token 估
+            if "一" <= ch <= "鿿" or "　" <= ch <= "ヿ" or "가" <= ch <= "힣":
+                cjk += 1
+            else:
+                other += 1
+        return cjk + other // 4
 
     def compress(self, summarizer) -> bool:
         """总结式压缩 + 保留首尾。触发并压缩了返回 True,否则 False。
@@ -66,7 +95,7 @@ class History:
           ③ 按"完整轮次"切:尾部起点若是孤立的 tool 结果,往前挪到拥有它的
              assistant,绝不拆散 tool_call 与 tool 结果的配对。
         """
-        if self._size() <= config.COMPRESS_THRESHOLD_CHARS:
+        if self._estimated_tokens() <= config.COMPRESS_THRESHOLD_TOKENS:
             return False
 
         msgs = self._messages

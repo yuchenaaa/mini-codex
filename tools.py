@@ -8,6 +8,7 @@
 """
 
 import json
+import os
 import subprocess
 
 import config
@@ -27,6 +28,20 @@ TOOLS_SCHEMA = [
                     "path": {"type": "string", "description": "文件路径,可以是相对或绝对路径"}
                 },
                 "required": ["path"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_dir",
+            "description": "列出一个文件夹下的文件和子文件夹。当你不确定目录里有什么、需要先摸清结构时调用(比如刚进一个项目,先看看有哪些文件)。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "文件夹路径,不填则列当前目录"}
+                },
+                "required": [],
             },
         },
     },
@@ -72,6 +87,21 @@ def _read_file(path: str) -> str:
         return f"[读取失败] {e}"
 
 
+def _list_dir(path: str = ".") -> str:
+    try:
+        entries = sorted(os.listdir(path))
+    except Exception as e:
+        return f"[列目录失败] {e}"
+    if not entries:
+        return "[空目录]"
+    lines = []
+    for name in entries:
+        full = os.path.join(path, name)
+        suffix = "/" if os.path.isdir(full) else ""
+        lines.append(f"{name}{suffix}")
+    return "\n".join(lines)
+
+
 def _write_file(path: str, content: str) -> str:
     try:
         with open(path, "w", encoding="utf-8") as f:
@@ -114,6 +144,7 @@ def _run_shell(command: str) -> str:
 # 路由表:工具名 -> 真正干活的函数
 _DISPATCH = {
     "read_file": lambda a: _read_file(a["path"]),
+    "list_dir": lambda a: _list_dir(a.get("path", ".")),
     "write_file": lambda a: _write_file(a["path"], a["content"]),
     "run_shell": lambda a: _run_shell(a["command"]),
 }

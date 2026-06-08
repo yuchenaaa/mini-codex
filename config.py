@@ -25,10 +25,22 @@ PROVIDERS = [
     {"name": "智谱 GLM",      "base_url": "https://open.bigmodel.cn/api/paas/v4",             "default_model": "glm-4.7"},
 ]
 
-# ---- Context 压缩参数 ----
-# 历史(整个 messages 序列化后的字符长度)超过这个阈值,就触发总结式压缩。
-# 设小一点方便演示触发;真实场景应按模型的 context window 估算 token。
-COMPRESS_THRESHOLD_CHARS = 8000
+# ---- Context 压缩参数(token 级预算)----
+# 思路:模型的上下文窗口是按 token 算的。我们不等"撑爆"才动,而是给回复留好余量,
+# 历史的估算 token 一旦超过 (窗口 - 余量),就触发总结式压缩。
+#
+# ⚠️ MODEL_CONTEXT_TOKENS 是模型窗口大小,以官方文档为准。GLM-4.7 的确切值请到
+#    智谱控制台核实;拿不准就往小了填,宁可早压缩也别撑爆报错。
+MODEL_CONTEXT_TOKENS = 128_000     # 模型上下文窗口(token),按你用的模型改
+RESPONSE_RESERVE_TOKENS = 8_000    # 给模型本轮回复 + 工具调用预留的 token 余量
+# 历史估算 token 超过这个阈值就压缩
+COMPRESS_THRESHOLD_TOKENS = MODEL_CONTEXT_TOKENS - RESPONSE_RESERVE_TOKENS
+
+# ---- 会话续聊 ----
+# 每轮对话后把完整历史存到工作目录下这个文件;下次启动可选择载入接着聊。
+# 只保留最近一次(同名文件覆盖写)。
+SESSION_FILE = ".mini_codex_session.json"
+
 KEEP_HEAD = 2   # 头:保留 system + 第一条 user 任务
 KEEP_TAIL = 6   # 尾:保留最近多少条消息
 
